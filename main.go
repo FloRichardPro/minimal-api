@@ -1,0 +1,5 @@
+package minimalapi
+
+func main() {
+
+}

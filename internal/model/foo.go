@@ -6,3 +6,7 @@ type Foo struct {
 	UUID uuid.UUID `json:"foo_uuid"`
 	Msg  string    `json:"msg"`
 }
+
+type PostFoo struct {
+	Msg string `json:"msg" validate:"required"`
+}

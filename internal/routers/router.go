@@ -6,11 +6,13 @@ import (
 
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
 )
 
 var (
-	Router *gin.Engine
+	Router           *gin.Engine
+	ValidateInstance *validator.Validate
 
 	Config Conf
 	Log    *zap.Logger
@@ -30,16 +32,19 @@ func Init() (err error) {
 		return fmt.Errorf("can't build new logger : %w", err)
 	}
 
+	ValidateInstance = validator.New()
+
 	Router = gin.New()
 
 	Router.Use(ginzap.RecoveryWithZap(Log, true))
 	Router.Use(ginzap.Ginzap(Log, time.RFC3339, true))
 
+	Router.GET("/foos", GetInstanceFooRouter().GetAll)
 	Router.Group("/foo").
+		POST("", GetInstanceFooRouter().Post).
 		GET("/:foo_uuid", GetInstanceFooRouter().Get).
-		POST("/:foo_uuid", GetInstanceFooRouter().Post).
-		PUT("", GetInstanceFooRouter().Put).
-		PATCH("", GetInstanceFooRouter().Patch)
+		PUT("/:foo_uuid", GetInstanceFooRouter().Put).
+		PATCH("/:foo_uuid", GetInstanceFooRouter().Patch)
 
 	return nil
 }

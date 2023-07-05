@@ -14,9 +14,7 @@ type SQLConnectorConf struct {
 }
 
 func NewSQLConnector(c SQLConnectorConf) (*sql.DB, error) {
-	var err error
-	sqlDB := new(sql.DB)
-	sqlDB, err = sql.Open(c.Driver, c.DSN)
+	sqlDB, err := sql.Open(c.Driver, c.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("can't open connection to SqlDB(driver: %s): %w", c.Driver, err)
 	}

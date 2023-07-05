@@ -1,0 +1,24 @@
+version: '3'
+services:
+  minimal_api:
+    build:
+      dockerfile: ./Dockerfile
+    container_name: minimal_api
+    restart: always
+    depends_on:
+      - minimal_sql
+    ports:
+      - 18080:8080
+    volumes:
+      - ./config/config.yaml:/config/config.yaml:ro
+
+  minimal_sql:
+    container_name: minimal_sql
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    restart: always
+    expose:
+      - 3306
+    ports:
+      - 13306:3306

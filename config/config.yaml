@@ -1,0 +1,15 @@
+
+services:
+  sql:
+    driver: mysql
+    dsn: "foo_user:foo_user_dev@tcp(minimal_sql:3306)/foo_db?loc=UTC&tls=false&parseTime=true" 
+
+controllers:
+  foo_controller:
+    foo_service_type: sql
+   
+routers:
+  addr: ""
+  port: 8080
+  gin_mode: debug
+  shutdown_timeout: 5

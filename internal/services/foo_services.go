@@ -19,7 +19,7 @@ func NewFooService() *FooService {
 }
 
 func (s *FooService) ReadAll() ([]model.Foo, error) {
-	query := `SELECT * FROM foo`
+	query := `SELECT foo_uuid, msg, phone, email FROM foo`
 	rows, err := s.sqlConnector.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("can't read all foos : %w", err)
@@ -33,7 +33,7 @@ func (s *FooService) ReadAll() ([]model.Foo, error) {
 	var foos []model.Foo
 	for rows.Next() {
 		foo := new(model.Foo)
-		if err = rows.Scan(&foo.UUID, &foo.Msg); err != nil {
+		if err = rows.Scan(&foo.UUID, &foo.Msg, &foo.Phone, &foo.Email); err != nil {
 			return nil, fmt.Errorf("can't read all foos : %w", err)
 		}
 		foos = append(foos, *foo)
@@ -44,8 +44,8 @@ func (s *FooService) ReadAll() ([]model.Foo, error) {
 
 func (s *FooService) Read(fooUUID uuid.UUID) (*model.Foo, error) {
 	foo := new(model.Foo)
-	query := `SELECT * FROM foo where foo_uuid=UUID_TO_BIN(?)`
-	if err := s.sqlConnector.QueryRow(query, fooUUID).Scan(&foo.UUID, &foo.Msg); err != nil {
+	query := `SELECT foo_uuid, msg, phone, email FROM foo where foo_uuid=UUID_TO_BIN(?)`
+	if err := s.sqlConnector.QueryRow(query, fooUUID).Scan(&foo.UUID, &foo.Msg, &foo.Phone, &foo.Email); err != nil {
 		return nil, fmt.Errorf("can't read foo by uuid : %w", err)
 	}
 
@@ -58,8 +58,8 @@ func (s *FooService) Write(foo *model.PostFoo) error {
 		return fmt.Errorf("can't begin write sql transacation : %w", err)
 	}
 
-	query := "INSERT INTO foo(msg) VALUES(?)"
-	res, err := tx.Exec(query, foo.Msg)
+	query := "INSERT INTO foo(msg, phone, email) VALUES(?,?,?)"
+	res, err := tx.Exec(query, foo.Msg, foo.Phone, foo.Email)
 	if err != nil {
 		return fmt.Errorf("can't insert new foo : %w", err)
 	}
@@ -88,8 +88,8 @@ func (s *FooService) Update(foo *model.Foo) (*model.Foo, error) {
 		return nil, fmt.Errorf("can't begin sql transacation : %w", err)
 	}
 
-	query := "UPDATE foo SET msg=? WHERE foo_uuid=UUID_TO_BIN(?)"
-	res, err := tx.Exec(query, foo.Msg)
+	query := "UPDATE foo SET msg=?, phone=?,email=? WHERE foo_uuid=UUID_TO_BIN(?)"
+	res, err := tx.Exec(query, foo.Msg, foo.Phone, foo.Email, foo.UUID)
 	if err != nil {
 		return nil, fmt.Errorf("can't insert new foo : %w", err)
 	}
@@ -106,6 +106,7 @@ func (s *FooService) Update(foo *model.Foo) (*model.Foo, error) {
 	}
 
 	if err = tx.Commit(); err != nil {
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("can't commit tx : %w", err)
 	}
 

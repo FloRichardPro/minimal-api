@@ -13,7 +13,7 @@ type IFooController interface {
 	Read(fooUUID uuid.UUID) (*model.Foo, error)
 	ReadAll() ([]model.Foo, error)
 	Write(foo *model.PostFoo) error
-	Update(foo *model.Foo) (*model.Foo, error)
+	Update(fooUUID uuid.UUID, fooFieldsToUpdate map[string]any) (*model.Foo, error)
 }
 
 type FooControllerConf struct {
@@ -55,18 +55,34 @@ func (ctl *FooController) Write(foo *model.PostFoo) error {
 	return nil
 }
 
-func (ctl *FooController) Update(foo *model.Foo) (*model.Foo, error) {
-	oldFoo, err := ctl.fooService.Read(foo.UUID)
+func (ctl *FooController) Update(fooUUID uuid.UUID, fooFieldsToUpdate map[string]any) (*model.Foo, error) {
+	// Reads the original foo
+	foo, err := ctl.fooService.Read(fooUUID)
 	if err != nil {
 		return nil, fmt.Errorf("can't retrieve not updated foo from data source : %w", err)
 	}
 
-	oldFooAsMap := make(map[string]any)
-
-	if err := mapstructure.Decode(oldFoo, oldFooAsMap); err != nil {
+	// Transform original fool to a map
+	fooAsMap := make(map[string]any)
+	if err := mapstructure.Decode(foo, &fooAsMap); err != nil {
 		return nil, fmt.Errorf("can't decode foo to map : %w", err)
 	}
 
+	// Apply changes from fooFieldsToUpdate map
+	for fieldName, value := range fooFieldsToUpdate {
+		fooAsMap[fieldName] = value
+	}
+
+	// Transform the original update foo map to a foo object
+	if err := mapstructure.Decode(fooAsMap, &foo); err != nil {
+		return nil, fmt.Errorf("can't decode foo to map : %w", err)
+	}
+
+	foo.UUID = fooUUID
+
+	fmt.Println("Update foo = ", fooAsMap)
+
+	// Update foo
 	updatedFoo, err := ctl.fooService.Update(foo)
 	if err != nil {
 		return nil, fmt.Errorf("can't write foo to data source : %w", err)

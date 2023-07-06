@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -80,13 +81,6 @@ func (r *FooRouter) Post(c *gin.Context) {
 }
 
 func (r *FooRouter) Put(c *gin.Context) {
-	requestBody := map[string]any{}
-	if err := c.ShouldBindJSON(requestBody); err != nil {
-		Log.Error("FooRouter.Put fail : %w", zap.Error(err))
-		c.AbortWithStatusJSON(http.StatusBadRequest, "bad request")
-		return
-	}
-
 	fooUUIDAsString := c.Param("foo_uuid")
 	fooUUID, err := uuid.Parse(fooUUIDAsString)
 	if err != nil {
@@ -95,11 +89,23 @@ func (r *FooRouter) Put(c *gin.Context) {
 		return
 	}
 
+	fooFieldsToUpdate := map[string]any{}
+	if err := c.ShouldBindJSON(&fooFieldsToUpdate); err != nil {
+		Log.Error("FooRouter.Put fail : %w", zap.Error(err))
+		c.AbortWithStatusJSON(http.StatusBadRequest, "bad request")
+		return
+	}
+
+	if len(fooFieldsToUpdate) <= 0 {
+		c.JSON(http.StatusNoContent, "no fields to update")
+		return
+	}
+
 	// Decode incoming request body to a Foo object.
-	foo := new(model.Foo)
+	fooUpdater := new(model.UpdateFoo)
 	config := &mapstructure.DecoderConfig{
 		ErrorUnused: true, // Extra fields throw an error.
-		Result:      &foo,
+		Result:      &fooUpdater,
 	}
 
 	decoder, err := mapstructure.NewDecoder(config)
@@ -109,29 +115,28 @@ func (r *FooRouter) Put(c *gin.Context) {
 		return
 	}
 
-	if err := decoder.Decode(requestBody); err != nil {
+	if err := decoder.Decode(fooFieldsToUpdate); err != nil {
 		Log.Error("FooRouter.Put fail : %w", zap.Error(err))
 		c.AbortWithStatusJSON(http.StatusBadRequest, "Can't decode request body")
 		return
 	}
 
-	// Adding the uuid retrieved from path params
-	foo.UUID = fooUUID
+	fmt.Println("Foo update : ", *fooUpdater)
 
 	// Iterate over request body keys, at this point there is only Foo fields.
 	fieldsToUpdate := make([]string, 0)
-	for fieldName := range requestBody {
+	for fieldName := range fooFieldsToUpdate {
 		fieldsToUpdate = append(fieldsToUpdate, fieldName)
 	}
 
 	// Only validate the fields that appears in request body
-	if err := r.validate.StructPartial(foo, fieldsToUpdate...); err != nil {
+	if err := r.validate.StructPartial(fooUpdater, fieldsToUpdate...); err != nil {
 		Log.Error("FooRouter.Put fail : invalid request body fields: %w", zap.Error(err))
 		c.AbortWithStatusJSON(http.StatusBadRequest, "Can't decode request body")
 		return
 	}
 
-	updatedFoo, err := r.ctlFoo.Update(foo)
+	updatedFoo, err := r.ctlFoo.Update(fooUUID, fooFieldsToUpdate)
 	if err != nil {
 		Log.Error("FooRouter.Put fail : %w", zap.Error(err))
 		c.AbortWithStatusJSON(http.StatusBadRequest, "can't update the resource")
